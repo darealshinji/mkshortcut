@@ -65,7 +65,7 @@ bool create_shell_link(
 	HRESULT hRes;
 	IShellLink *shLink;
 	IPersistFile *pFile;
-	bool ret;
+	bool ret = false;
 
 	// filename and link target required
 	if (!pszFileName || !pszLinkTarget) {
@@ -77,11 +77,10 @@ bool create_shell_link(
 
 	if (hRes != S_FALSE && hRes != S_OK) {
 		return false;
-    }
+	}
 
 	// create instance
-	hRes = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER,
-							IID_IShellLink, reinterpret_cast<void **>(&shLink));
+	hRes = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLink, reinterpret_cast<void **>(&shLink));
 
 	if (hRes != S_OK) {
 		OleUninitialize();
@@ -108,55 +107,18 @@ bool create_shell_link(
 			break;
 	}
 
-	// link target
-	if (shLink->SetPath(pszLinkTarget) != S_OK) {
-		goto LINK_ERROR;
+	// create and save Shell Link file
+	if (shLink->SetPath(pszLinkTarget) == S_OK
+		&& (!pszArgs || shLink->SetArguments(pszArgs) == S_OK)
+		&& (!pszIconPath || shLink->SetIconLocation(pszIconPath, iIcon) == S_OK)
+		&& (!pszDesc || shLink->SetDescription(pszDesc) == S_OK)
+		&& (!pszDir || shLink->SetWorkingDirectory(pszDir) == S_OK)
+		&& shLink->SetShowCmd(iShowCmd) == S_OK
+		&& (wHotKey == 0 || shLink->SetHotkey(wHotKey) == S_OK)
+		&& pFile->Save(pszFileName, FALSE) == S_OK)
+	{
+		ret = true;
 	}
-
-	// arguments
-	if (pszArgs && shLink->SetArguments(pszArgs) != S_OK) {
-		goto LINK_ERROR;
-	}
-
-	// icon path
-	if (pszIconPath && shLink->SetIconLocation(pszIconPath, iIcon) != S_OK) {
-		goto LINK_ERROR;
-	}
-
-	// description
-	if (pszDesc && shLink->SetDescription(pszDesc) != S_OK) {
-		goto LINK_ERROR;
-	}
-
-	// working directory
-	if (pszDir && shLink->SetWorkingDirectory(pszDir) != S_OK) {
-		goto LINK_ERROR;
-	}
-
-	// show window command
-	if (shLink->SetShowCmd(iShowCmd) != S_OK) {
-		goto LINK_ERROR;
-	}
-
-	// hot key
-	if (wHotKey != 0 && shLink->SetHotkey(wHotKey) != S_OK) {
-		goto LINK_ERROR;
-	}
-
-	// save .lnk file
-	if (pFile->Save(pszFileName, FALSE) != S_OK) {
-		goto LINK_ERROR;
-	}
-
-	// nothing went wrong, return true
-	ret = true;
-	goto LINK_END;
-
-LINK_ERROR:
-
-	ret = false;
-
-LINK_END:
 
 	// free resources
 	pFile->Release();
@@ -234,7 +196,7 @@ int wmain(int argc, wchar_t *argv[])
 			return 1;
 		}
 
-        // print help
+		// print help
 		if (wcscmp(a+1, L"?") == 0 || _wcsicmp(a+1, L"h") == 0 || _wcsicmp(a+1, L"help") == 0) {
 			print_help(prog);
 			return 0;
@@ -337,7 +299,7 @@ int wmain(int argc, wchar_t *argv[])
 		if (combo != 0 && key >= L'a' && key <= L'z') {
 			wHotKey = (combo << 8) | ('A' + (key - L'a'));
 		} else {
- 			wprintf_s(invOptMsg, prog, hkOpt, prog);
+			wprintf_s(invOptMsg, prog, hkOpt, prog);
 			return 1;
 		}
 	}
