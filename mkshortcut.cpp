@@ -32,7 +32,7 @@
  *   x86_64-w64-mingw32-g++ -Wall -Wextra -O3 -municode -o mkshortcut.exe  mkshortcut.cpp  -lole32 -luuid -static -s
  *
  * Compile with MSVC:
- *   cl.exe /W2 /O2 mkshortcut.cpp
+ *   cl.exe /W3 /O2 mkshortcut.cpp
  */
 
 #ifdef _MSC_VER
@@ -49,6 +49,7 @@
 #include <wchar.h>
 
 
+// Important: COM library needs to be initialized before using this function
 bool create_shell_link(
 	wchar_t *pszFileName,    // Path to shell link (shortcut)
 	wchar_t *pszLinkTarget,  // Path to shortcut target
@@ -58,13 +59,16 @@ bool create_shell_link(
 	wchar_t *pszDesc,        // Description
 	wchar_t *pszDir,         // Working directory to run command
 	int iShowCmd,            // Show window setting: SW_SHOWNORMAL, SW_SHOWMAXIMIZED or SW_SHOWMINNOACTIVE
-	WORD wHotKey             // Sets a keyboard shortcut (hot key); modifier flags are: HOTKEYF_ALT,
+	WORD wHotKey,            // Sets a keyboard shortcut (hot key); modifier flags are: HOTKEYF_ALT,
 	                         // HOTKEYF_CONTROL, HOTKEYF_EXT, HOTKEYF_SHIFT
+	bool bAdmin              // Flag shell link to be run as Admin
 )
 {
 	HRESULT hRes;
-	IShellLink *shLink;
-	IPersistFile *pFile;
+	DWORD dwFlags = 0;
+	IShellLink *shLink = NULL;
+	IShellLinkDataList *shLdl = NULL;
+	IPersistFile *pFile = NULL;
 	bool ret = false;
 
 	// filename and link target required
@@ -72,18 +76,15 @@ bool create_shell_link(
 		return false;
 	}
 
-	// initialize OLE Component Object (COM) Library
-	hRes = OleInitialize(NULL);
-
-	if (hRes != S_FALSE && hRes != S_OK) {
-		return false;
-	}
-
 	// create instance
-	hRes = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLink, reinterpret_cast<void **>(&shLink));
+	hRes = CoCreateInstance(
+		CLSID_ShellLink,
+		NULL,
+		CLSCTX_INPROC_SERVER,
+		IID_IShellLink,
+		reinterpret_cast<void **>(&shLink));
 
 	if (hRes != S_OK) {
-		OleUninitialize();
 		return false;
 	}
 
@@ -92,7 +93,6 @@ bool create_shell_link(
 
 	if (hRes != S_OK) {
 		shLink->Release();
-		OleUninitialize();
 		return false;
 	}
 
@@ -107,23 +107,48 @@ bool create_shell_link(
 			break;
 	}
 
-	// create and save Shell Link file
+	// create Shell Link file
 	if (shLink->SetPath(pszLinkTarget) == S_OK
 		&& (!pszArgs || shLink->SetArguments(pszArgs) == S_OK)
 		&& (!pszIconPath || shLink->SetIconLocation(pszIconPath, iIcon) == S_OK)
 		&& (!pszDesc || shLink->SetDescription(pszDesc) == S_OK)
 		&& (!pszDir || shLink->SetWorkingDirectory(pszDir) == S_OK)
 		&& shLink->SetShowCmd(iShowCmd) == S_OK
-		&& (wHotKey == 0 || shLink->SetHotkey(wHotKey) == S_OK)
-		&& pFile->Save(pszFileName, FALSE) == S_OK)
+		&& (wHotKey == 0 || shLink->SetHotkey(wHotKey) == S_OK))
 	{
 		ret = true;
+	} else {
+		pFile->Release();
+		shLink->Release();
+		return false;
+	}
+
+	// set SLDF_RUNAS_USER flag
+	if (bAdmin) {
+		hRes = shLink->QueryInterface(IID_IShellLinkDataList, reinterpret_cast<void **>(&shLdl));
+
+		if (hRes != S_OK
+			|| shLdl->GetFlags(&dwFlags) != S_OK
+			|| shLdl->SetFlags(SLDF_RUNAS_USER | dwFlags) != S_OK)
+		{
+			ret = false;
+		}
+	}
+
+	// save Shell Link file
+	if (ret == true && (pFile->Save(pszFileName, TRUE) != S_OK
+			|| pFile->SaveCompleted(NULL) != S_OK))
+	{
+		ret = false;
 	}
 
 	// free resources
 	pFile->Release();
 	shLink->Release();
-	OleUninitialize();
+
+	if (shLdl) {
+		shLdl->Release();
+	}
 
 	return ret;
 }
@@ -153,7 +178,8 @@ void print_help(wchar_t *progName)
 		L"  /min                Start with minimized window\n"
 		L"  /tfull              Resolve path to shortcut target to a full path\n"
 		L"  /ifull              Resolve path to icon file to a full path\n"
-		L"", progName);
+		L"  /admin              Flag shortcut to be run as Administrator\n"
+		L"\n", progName);
 }
 
 int wmain(int argc, wchar_t *argv[])
@@ -175,8 +201,10 @@ int wmain(int argc, wchar_t *argv[])
 	wchar_t *fullPathTarget = NULL;
 	wchar_t *fullPathIcon = NULL;
 	int ret = 0;
+	HRESULT hRes;
 	bool tFull = false;
 	bool iFull = false;
+	bool bAdmin = false;
 
 	const wchar_t *invOptMsg = L"%s: invalid option -- '%s'\nTry '%s /?' for more information.\n";
 
@@ -219,6 +247,9 @@ int wmain(int argc, wchar_t *argv[])
 			continue;
 		} else if (_wcsicmp(a+1, L"ifull") == 0) {
 			iFull = true;
+			continue;
+		} else if (_wcsicmp(a+1, L"admin") == 0) {
+			bAdmin = true;
 			continue;
 		}
 
@@ -287,11 +318,11 @@ int wmain(int argc, wchar_t *argv[])
 		p = hkOpt + 3;
 
 		if (_wcsnicmp(p, L"ca", 2) == 0) {
-			combo = HOTKEYF_CONTROL|HOTKEYF_ALT;
+			combo = HOTKEYF_CONTROL | HOTKEYF_ALT;
 		} else if (_wcsnicmp(p, L"cs", 2) == 0) {
-			combo = HOTKEYF_CONTROL|HOTKEYF_SHIFT;
+			combo = HOTKEYF_CONTROL | HOTKEYF_SHIFT;
 		} else if (_wcsnicmp(p, L"sa", 2) == 0) {
-			combo = HOTKEYF_SHIFT|HOTKEYF_ALT;
+			combo = HOTKEYF_SHIFT | HOTKEYF_ALT;
 		}
 
 		key = towlower(p[2]);
@@ -307,7 +338,7 @@ int wmain(int argc, wchar_t *argv[])
 	// warn if output doesn't end on .lnk
 	p = wcsrchr(pszFileName, L'.');
 
-	if (!p /*|| p == pszFileName*/ || _wcsicmp(p, L".lnk") != 0) {
+	if (!p || _wcsicmp(p, L".lnk") != 0) {
 		wprintf_s(L"Warning: output link name doesn't end on '.lnk'!\n\n");
 	}
 
@@ -336,9 +367,26 @@ int wmain(int argc, wchar_t *argv[])
 		}
 	}
 
+	// initialize COM library
+	hRes = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
+
+	if (hRes != S_OK) {
+		wprintf_s(L"%s: could not initialize COM library\n", prog);
+		goto MAIN_EXIT;
+	}
+
 	// create Shortcut
-	if (create_shell_link(pszFileName, pszLinkTarget, pszArgs, pszIconPath,
-							iIcon, pszDesc, pszDir, iShowCmd, wHotKey))
+	if (create_shell_link(
+				pszFileName,
+				pszLinkTarget,
+				pszArgs,
+				pszIconPath,
+				iIcon,
+				pszDesc,
+				pszDir,
+				iShowCmd,
+				wHotKey,
+				bAdmin))
 	{
 		if ((fullPathLink = _wfullpath(NULL, pszFileName, 0)) != NULL) {
 			pszFileName = fullPathLink;
@@ -364,6 +412,8 @@ MAIN_EXIT:
 	if (fullPathIcon) {
 		free(fullPathIcon);
 	}
+
+	CoUninitialize();
 
 	return ret;
 }

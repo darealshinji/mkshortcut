@@ -1,0 +1,11 @@
+cxx = cl.exe
+cxxflags = /nologo /W3 /O2
+
+all: mkshortcut.exe
+
+clean:
+	del mkshortcut.exe
+
+mkshortcut.exe:
+	$(cxx) $(cxxflags) mkshortcut.cpp
+
