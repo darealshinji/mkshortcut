@@ -1,11 +1,14 @@
 cxx = cl.exe
 cxxflags = /nologo /W3 /O2
 
-all: mkshortcut.exe
+all: mkshortcut.exe shortcutinfo.exe
 
 clean:
-	del mkshortcut.exe
+	del mkshortcut.exe shortcutinfo.exe
 
 mkshortcut.exe:
 	$(cxx) $(cxxflags) mkshortcut.cpp
+
+shortcutinfo.exe:
+	$(cxx) $(cxxflags) shortcutinfo.cpp
 
