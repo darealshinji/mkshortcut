@@ -51,11 +51,14 @@
 int wmain(int argc, wchar_t *argv[])
 {
 	IShellLink *shLink = NULL;
+	IShellLinkDataList *shLdl = NULL;
 	IPersistFile *pFile = NULL;
 	HRESULT hRes;
+	DWORD dwFlags = 0;
 	int ret = 1;
+	wchar_t *filename;
 
-	wchar_t buf[4096];
+	wchar_t buf[4096] = {0};
 	const int bufLen = ARRAYSIZE(buf);
 	LPWSTR pbuf = reinterpret_cast<LPWSTR>(&buf);
 	WORD wHotkey = 0;
@@ -67,6 +70,8 @@ int wmain(int argc, wchar_t *argv[])
 			L"usage: %s FILENAME\n", argv[0]);
 		return 0;
 	}
+
+	filename = argv[1];
 
 	// initialize COM library
 	hRes = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
@@ -96,13 +101,40 @@ int wmain(int argc, wchar_t *argv[])
 	}
 
 	// open file
-	if (pFile->Load(argv[1], 0) != S_OK) {
+	if (pFile->Load(filename, 0) != S_OK) {
 		goto MAIN_EXIT;
 	}
 
 	// path
-	if (shLink->GetPath(pbuf, bufLen, NULL, 0) == S_OK && wcslen(buf) > 0) {
-		wprintf_s(L"Target path: %s\n", buf);
+	if (shLink->GetPath(pbuf, bufLen, NULL, 0) == S_OK) {
+		if (wcslen(buf) > 0) {
+			wprintf_s(L"Target path: %s\n", buf);
+		}
+	} else {
+		// CLSID (should find a better way to do this)
+		FILE *fp = NULL;
+		unsigned char data[98] = {0};
+		unsigned char *p = data;
+		const unsigned char headerData[] = {
+			0x4C,0x00,0x00,0x00,0x01,0x14,0x02,0x00,0x00,0x00,0x00,0x00,0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46
+		};
+
+		if (_wfopen_s(&fp, filename, L"rb") == 0 && fp
+			&& fread(&data, 1, sizeof(data), fp) == sizeof(data)
+			&& memcmp(data, headerData, sizeof(headerData)) == 0)
+		{
+			p += sizeof(data) - 16;
+			wprintf_s(L"Target path: ::{");
+			wprintf_s(L"%02X%02X%02X%02X-", p[3], p[2], p[1], p[0]);
+			wprintf_s(L"%02X%02X-", p[5], p[4]);
+			wprintf_s(L"%02X%02X-", p[7], p[6]);
+			wprintf_s(L"%02X%02X-", p[8], p[9]);
+			wprintf_s(L"%02X%02X%02X%02X%02X%02X}\n", p[10], p[11], p[12], p[13], p[14], p[15]);
+		}
+
+		if (fp) {
+			fclose(fp);
+		}
 	}
 
 	// arguments
@@ -155,56 +187,59 @@ int wmain(int argc, wchar_t *argv[])
 		unsigned char lo = wHotkey & 0xff;
 
 		if (hi & HOTKEYF_CONTROL) {
-			wprintf_s(L" CTRL");
+			wprintf_s(L" [CTRL]");
 		}
 
 		if (hi & HOTKEYF_SHIFT) {
-			wprintf_s(L" SHIFT");
+			wprintf_s(L" [SHIFT]");
 		}
 
 		if (hi & HOTKEYF_ALT) {
-			wprintf_s(L" ALT");
+			wprintf_s(L" [ALT]");
 		}
 
 		if (hi & HOTKEYF_EXT) {
-			wprintf_s(L" EXT");
+			wprintf_s(L" [EXT]");
 		}
 
-#ifdef _MSC_VER
 		if ((lo >= 'A' && lo <= 'Z') || (lo >= '0' && lo <= '9')) {
-			wprintf_s(L" %c", lo);  // A-Z, 0-9
-		} else if (lo >= 0x70 && lo <= 0x7b) {
-			wprintf_s(L" F%d", lo - 0x6f);  // F1 ... F12
-		} else if (isgraph(lo)) {
-			wprintf_s(L" %c", lo);
+			wprintf_s(L" [%c]", lo);
+		} else if (lo >= VK_F1 && lo <= VK_F24) {
+			wprintf_s(L" [F%d]", lo - (VK_F1 - 1));
+		} else if (lo == VK_NUMLOCK) {
+			wprintf_s(L" [NUMLOCK]");
+		} else if (lo == VK_SCROLL) {
+			wprintf_s(L" [SCROLL]");
+		} else if (lo == 0x00) {
+			wprintf_s(L" [0x00 (not set)]");
 		} else {
-			wprintf_s(L" 0x%x", lo);
+			wprintf_s(L" [0x%02X (not supported)]", lo);
 		}
-#else
-		switch(lo) {
-			case 'A' ... 'Z':
-			case '0' ... '9':
-				wprintf_s(L" %c", lo);
-				break;
-			case 0x70 ... 0x7b:  // F1 ... F12
-				wprintf_s(L" F%d", lo - 0x6f);
-				break;
-			default:
-				if (isgraph(lo)) {
-					wprintf_s(L" %c", lo);
-				} else {
-					wprintf_s(L" 0x%x", lo);
-				}
-				break;
-		}
-#endif
 
-		wprintf_s(L" (0x%x)\n", wHotkey);
+		wprintf_s(L" (0x%X)\n", wHotkey);
+	}
+
+	// ShellLinkDataList
+	hRes = shLink->QueryInterface(IID_IShellLinkDataList, reinterpret_cast<void **>(&shLdl));
+
+	if (hRes == S_OK && shLdl->GetFlags(&dwFlags) == S_OK) {
+		wprintf_s(L"Run as Administrator: ");
+		wprintf_s((dwFlags & SLDF_RUNAS_USER) ? L"yes\n" : L"no\n");
+
+/*	EXP_DARWIN_LINK *darw = NULL;
+		if ((dwFlags & SLDF_HAS_DARWINID) && shLdl->CopyDataBlock(EXP_DARWIN_ID_SIG, reinterpret_cast<void **>(darw)) == S_OK) {
+			wprintf_s(L"szwDarwinID: %s\n", darw->szwDarwinID);
+			LocalFree(darw);
+		}*/
 	}
 
 	ret = 0;
 
 MAIN_EXIT:
+
+	if (shLdl) {
+		shLdl->Release();
+	}
 
 	if (shLink) {
 		shLink->Release();

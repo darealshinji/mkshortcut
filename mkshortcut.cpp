@@ -52,16 +52,18 @@
 // Important: COM library needs to be initialized before using this function
 bool create_shell_link(
 	wchar_t *pszFileName,    // Path to shell link (shortcut)
-	wchar_t *pszLinkTarget,  // Path to shortcut target
+	wchar_t *pszLinkTarget,  // Path to shortcut target (can be a CLSID)
 	wchar_t *pszArgs,        // Command line arguments to use on launch
 	wchar_t *pszIconPath,    // Path to file containing icon (.ico, .icl, .exe, .dll)
 	int iIcon,               // Icon index number
 	wchar_t *pszDesc,        // Description
 	wchar_t *pszDir,         // Working directory to run command
 	int iShowCmd,            // Show window setting: SW_SHOWNORMAL, SW_SHOWMAXIMIZED or SW_SHOWMINNOACTIVE
-	WORD wHotKey,            // Sets a keyboard shortcut (hot key); modifier flags are: HOTKEYF_ALT,
-	                         // HOTKEYF_CONTROL, HOTKEYF_EXT, HOTKEYF_SHIFT
-	bool bAdmin              // Flag shell link to be run as Admin
+	WORD wHotKey,            // Sets a keyboard shortcut (hot key);
+	                         // HighByte modifier flags: HOTKEYF_ALT, HOTKEYF_CONTROL, HOTKEYF_EXT, HOTKEYF_SHIFT
+	                         // LowByte key values: 0-9, A-Z, VK_F1-VK_F24, VK_NUMLOCK, VK_SCROLL
+	                         // see part 2.1.3 of https://winprotocoldoc.blob.core.windows.net/productionwindowsarchives/MS-SHLLINK/%5bMS-SHLLINK%5d.pdf
+	bool bAdmin              // Flag shell link to be run as Administrator
 )
 {
 	HRESULT hRes;
@@ -153,6 +155,53 @@ bool create_shell_link(
 	return ret;
 }
 
+bool hotkey_from_string(wchar_t *p, WORD &wHotKey)
+{
+	WORD combo;
+	wchar_t key;
+	int f = 0;
+
+	if (_wcsnicmp(p, L"ca", 2) == 0) {
+		combo = HOTKEYF_CONTROL | HOTKEYF_ALT;
+	} else if (_wcsnicmp(p, L"cs", 2) == 0) {
+		combo = HOTKEYF_CONTROL | HOTKEYF_SHIFT;
+	} else if (_wcsnicmp(p, L"sa", 2) == 0) {
+		combo = HOTKEYF_SHIFT | HOTKEYF_ALT;
+	} else {
+		return false;
+	}
+
+	p += 2;
+	key = towupper(p[0]);
+
+	if (wcslen(p) == 1) {
+		// A-Z, 0-9
+		if (key >= L'A' && key <= L'Z') {
+			wHotKey = (combo << 8) | ('A' + (key - L'A'));
+		} else if (key >= L'0' && key <= L'9') {
+			wHotKey = (combo << 8) | ('0' + (key - L'0'));
+		} else {
+			return false;
+		}
+	} else {
+		// Numlock, Scroll, F-keys
+		if (_wcsicmp(p, L"numlock") == 0) {
+			wHotKey = (combo << 8) | VK_NUMLOCK;
+		} else if (_wcsicmp(p, L"scroll") == 0) {
+			wHotKey = (combo << 8) | VK_SCROLL;
+		} else if (key == L'F' && swscanf_s(p+1, L"%d", &f) == 1) {
+			if (f < 1 || f > 24) {
+				return false;
+			}
+			wHotKey = (combo << 8) | (VK_F1 + (f - 1));
+		} else {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 void print_help(wchar_t *progName)
 {
 	wprintf_s(
@@ -166,14 +215,17 @@ void print_help(wchar_t *progName)
 		L"  /? or /h or /help   Print this text\n"
 		L"\n"
 		L"  /o:<output>         Path to shell link (shortcut); should end on .lnk [mandatory]\n"
-		L"  /t:<target>         Path to shortcut target [mandatory]\n"
+		L"  /t:<target>         Path to shortcut target or CLSID [mandatory]\n"
+		L"                      To set a CLSID the target parameter must be\n"
+		L"                      set as ::{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}"
 		L"  /a:<arguments>      Command line arguments to use on launch\n"
 		L"  /i:<icon>           Path to file containing icon (.ico, .icl, .exe, .dll)\n"
 		L"  /n:<index>          Icon index number\n"
 		L"  /d:<description>    Description (for tooltip)\n"
 		L"  /w:<directory>      Working directory to run command\n"
-		L"  /k:<hotkey>         Set hotkey (ca[a-z], cs[a-z] or sa[a-z] = Ctrl+Alt+[A-Z],\n"
-		"                       Ctrl+Shift+[A-Z] or Shift+Alt+[A-Z])\n"
+		L"  /k:<hotkey>         Set hotkey (cak, csk or sak = Ctrl+Alt+Key,\n"
+		L"                      Ctrl+Shift+Key or Shift+Alt+Key; Key must be 0-9,\n"
+		L"                      A-Z, F1-F24, NUMLOCK or SCROLL)\n"
 		L"  /max                Start with maximized window\n"
 		L"  /min                Start with minimized window\n"
 		L"  /tfull              Resolve path to shortcut target to a full path\n"
@@ -306,33 +358,9 @@ int wmain(int argc, wchar_t *argv[])
 	}
 
 	// hotkey
-	if (hkOpt) {
-		WORD combo = 0;
-		wchar_t key = 0;
-
-		if (wcslen(hkOpt) != 6) {
-			wprintf_s(invOptMsg, prog, hkOpt, prog);
-			return 1;
-		}
-
-		p = hkOpt + 3;
-
-		if (_wcsnicmp(p, L"ca", 2) == 0) {
-			combo = HOTKEYF_CONTROL | HOTKEYF_ALT;
-		} else if (_wcsnicmp(p, L"cs", 2) == 0) {
-			combo = HOTKEYF_CONTROL | HOTKEYF_SHIFT;
-		} else if (_wcsnicmp(p, L"sa", 2) == 0) {
-			combo = HOTKEYF_SHIFT | HOTKEYF_ALT;
-		}
-
-		key = towlower(p[2]);
-
-		if (combo != 0 && key >= L'a' && key <= L'z') {
-			wHotKey = (combo << 8) | ('A' + (key - L'a'));
-		} else {
-			wprintf_s(invOptMsg, prog, hkOpt, prog);
-			return 1;
-		}
+	if (hkOpt && (wcslen(hkOpt) < 6 || !hotkey_from_string(hkOpt+3, wHotKey))) {
+		wprintf_s(invOptMsg, prog, hkOpt, prog);
+		return 1;
 	}
 
 	// warn if output doesn't end on .lnk
