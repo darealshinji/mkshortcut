@@ -33,8 +33,6 @@
  *   cl.exe /W3 /O2 shortcutinfo.cpp
  */
 
-// TODO: show CLSID targets
-
 #ifdef _MSC_VER
 # pragma comment(lib, "ole32.lib")
 #endif
@@ -48,15 +46,26 @@
 #include <wchar.h>
 
 
+inline void print_guid(unsigned char *p)
+{
+	wprintf_s(L"::{%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
+		p[3], p[2], p[1], p[0],
+		p[5] ,p[4],
+		p[7], p[6],
+		p[8], p[9],
+		p[10], p[11], p[12], p[13], p[14], p[15]);
+}
+
 int wmain(int argc, wchar_t *argv[])
 {
 	IShellLink *shLink = NULL;
 	IShellLinkDataList *shLdl = NULL;
 	IPersistFile *pFile = NULL;
-	HRESULT hRes;
-	DWORD dwFlags = 0;
-	int ret = 1;
+	FILE *fp = NULL;
 	wchar_t *filename;
+	DWORD dwFlags = 0;
+	HRESULT hRes;
+	int ret = 1;
 
 	wchar_t buf[4096] = {0};
 	const int bufLen = ARRAYSIZE(buf);
@@ -106,35 +115,36 @@ int wmain(int argc, wchar_t *argv[])
 	}
 
 	// path
-	if (shLink->GetPath(pbuf, bufLen, NULL, 0) == S_OK) {
-		if (wcslen(buf) > 0) {
-			wprintf_s(L"Target path: %s\n", buf);
-		}
-	} else {
-		// CLSID (should find a better way to do this)
-		FILE *fp = NULL;
-		unsigned char data[98] = {0};
-		unsigned char *p = data;
-		const unsigned char headerData[] = {
-			0x4C,0x00,0x00,0x00,0x01,0x14,0x02,0x00,0x00,0x00,0x00,0x00,0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46
-		};
+	if (shLink->GetPath(pbuf, bufLen, NULL, 0) == S_OK && wcslen(buf) > 0) {
+		wprintf_s(L"Target path: %s\n", buf);
+	}
 
-		if (_wfopen_s(&fp, filename, L"rb") == 0 && fp
-			&& fread(&data, 1, sizeof(data), fp) == sizeof(data)
-			&& memcmp(data, headerData, sizeof(headerData)) == 0)
-		{
-			p += sizeof(data) - 16;
-			wprintf_s(L"Target path: ::{");
-			wprintf_s(L"%02X%02X%02X%02X-", p[3], p[2], p[1], p[0]);
-			wprintf_s(L"%02X%02X-", p[5], p[4]);
-			wprintf_s(L"%02X%02X-", p[7], p[6]);
-			wprintf_s(L"%02X%02X-", p[8], p[9]);
-			wprintf_s(L"%02X%02X%02X%02X%02X%02X}\n", p[10], p[11], p[12], p[13], p[14], p[15]);
-		}
+	// CLSID (not the best solution)
+	if (_wfopen_s(&fp, filename, L"rb") == 0 && fp && fseek(fp, 76, SEEK_SET) == 0) {
+		unsigned char data[64] = {0};
+		int len = fgetc(fp);
 
-		if (fp) {
-			fclose(fp);
+		if (len == 64) {
+			// 2 CLSIDs, i.e. ::{26EE0668-A00A-44D7-9371-BEB064C98683}\0\::{7B81BE6A-CE2B-4676-A29E-EB907A5126C5}
+			if (fread(&data, 1, 63, fp) == 63) {
+				wprintf_s(L"CLSID: ");
+				print_guid(data+5);
+				wprintf_s(L"\\0\\");
+				print_guid(data+47);
+				putwchar(L'\n');
+			}
+		} else {
+			// 1 CLSID
+			if (fread(&data, 1, 21, fp) == 21) {
+				wprintf_s(L"CLSID: ");
+				print_guid(data+5);
+				putwchar(L'\n');
+			}
 		}
+	}
+
+	if (fp) {
+		fclose(fp);
 	}
 
 	// arguments
@@ -219,18 +229,12 @@ int wmain(int argc, wchar_t *argv[])
 		wprintf_s(L" (0x%X)\n", wHotkey);
 	}
 
-	// ShellLinkDataList
+	// ShellLinkDataList (for flags)
 	hRes = shLink->QueryInterface(IID_IShellLinkDataList, reinterpret_cast<void **>(&shLdl));
 
 	if (hRes == S_OK && shLdl->GetFlags(&dwFlags) == S_OK) {
 		wprintf_s(L"Run as Administrator: ");
 		wprintf_s((dwFlags & SLDF_RUNAS_USER) ? L"yes\n" : L"no\n");
-
-/*	EXP_DARWIN_LINK *darw = NULL;
-		if ((dwFlags & SLDF_HAS_DARWINID) && shLdl->CopyDataBlock(EXP_DARWIN_ID_SIG, reinterpret_cast<void **>(darw)) == S_OK) {
-			wprintf_s(L"szwDarwinID: %s\n", darw->szwDarwinID);
-			LocalFree(darw);
-		}*/
 	}
 
 	ret = 0;
