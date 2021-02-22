@@ -51,3 +51,21 @@ this will make Firefox open *Windows* wich is resolved from the working director
 `/d:"Firefox (really)"` -> set tooltip description
 
 `/k:saf` -> set "hotkey" to **S**hift+**A**lt+**F**; pressing this combination when being "on the desktop" will open the shortcut
+
+
+Alternative
+-----------
+As an alternative you can create *Internet Shortcuts* (using a text editor, not this tool).
+Internet shortcuts are text files in *.ini* format with the file extension `.url`.
+They seem less flexible but like `.desktop` files on \*nix they're easier to create and edit.
+According to my tests the text format can be `UTF-8` or `UCS-2 LE`, both with and without byte order mark (BOM).
+
+Here's an example for Firefox:
+``` ini
+[InternetShortcut]
+URL=file://C:\Program Files\Mozilla Firefox\firefox.exe
+IDList=
+HotKey=0
+IconFile=C:\Program Files\Mozilla Firefox\firefox.exe
+IconIndex=0
+```
