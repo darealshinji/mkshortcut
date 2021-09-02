@@ -217,7 +217,7 @@ void print_help(wchar_t *progName)
 		L"  /o:<output>         Path to shell link (shortcut); should end on .lnk [mandatory]\n"
 		L"  /t:<target>         Path to shortcut target or CLSID [mandatory]\n"
 		L"                      To set a CLSID the target parameter must be\n"
-		L"                      set as ::{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}"
+		L"                      set as ::{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}\n"
 		L"  /a:<arguments>      Command line arguments to use on launch\n"
 		L"  /i:<icon>           Path to file containing icon (.ico, .icl, .exe, .dll)\n"
 		L"  /n:<index>          Icon index number\n"
