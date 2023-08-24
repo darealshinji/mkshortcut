@@ -1,7 +1,12 @@
 CXX      := x86_64-w64-mingw32-g++
-CXXFLAGS := -Wall -Wextra -O3 -municode
+CXXFLAGS := -Wall -Wextra -O3
 LDFLAGS  := -static -s
 LIBS     := -lole32 -luuid
+
+ifeq ($(ENABLE_UTF8),)
+CXXFLAGS += -D_UNICODE -municode
+endif
+
 
 all: mkshortcut.exe shortcutinfo.exe
 

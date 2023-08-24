@@ -6,16 +6,16 @@ It was published into its own repository in the hope that people will have it ea
 Check out https://github.com/libyal/liblnk if you don't want to use the Windows API.
 
 Notes:
-* released into the Public Domain (Unlicense)
+* released under MIT license
 * does not create .url files (those are text files in an INI format)
-* no header file; just copy the code you need from mkshortcut.cpp if you want to use it in your project
-* Unicode only; it's not the 90's anymore and the used IPersistFile class only takes LPCOLESTR, which is wide character
+* no header file, just copy the code you need
+* Unicode and ANSI using `tchar.h`
 * requires linkage against `ole32.lib` on MSVC and `-lole32 -luuid` on GCC/MinGW
 
 Compile:
 * Visual Studio 2019: open the provided solution file (mkshortcut.sln) and select *Build* -> *Build solution*
-* MSVC command line: `cl.exe /W2 /O2 mkshortcut.cpp`
-* GCC: `x86_64-w64-mingw32-g++ -Wall -Wextra -O3 -municode -o mkshortcut.exe  mkshortcut.cpp  -lole32 -luuid -static -s`
+* MSVC command line: `nmake -f Makefile.nmake`
+* GCC/MinGW: `make`
 
 
 Usage example
@@ -53,19 +53,3 @@ this will make Firefox open *Windows* wich is resolved from the working director
 `/k:saf` -> set "hotkey" to **S**hift+**A**lt+**F**; pressing this combination when being "on the desktop" will open the shortcut
 
 
-Alternative
------------
-As an alternative you can create *Internet Shortcuts* (using a text editor, not this tool).
-Internet shortcuts are text files in *.ini* format with the file extension `.url`.
-They seem less flexible but like `.desktop` files on \*nix they're easier to create and edit.
-According to my tests the text format can be `UTF-8` or `UCS-2 LE`, both with and without byte order mark (BOM).
-
-Here's an example for Firefox:
-``` ini
-[InternetShortcut]
-URL=file://C:\Program Files\Mozilla Firefox\firefox.exe
-IDList=
-HotKey=0
-IconFile=C:\Program Files\Mozilla Firefox\firefox.exe
-IconIndex=0
-```

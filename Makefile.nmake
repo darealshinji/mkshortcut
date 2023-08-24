@@ -1,5 +1,5 @@
 cxx = cl.exe
-cxxflags = /nologo /W3 /O2
+cxxflags = -nologo -W3 -O2 -D_UNICODE
 
 all: mkshortcut.exe shortcutinfo.exe
 
