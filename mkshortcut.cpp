@@ -26,13 +26,14 @@ SOFTWARE.
  * Create a Shell Link a.k.a. Shortcut from command line
  *
  * Compile with GCC/MinGW:
- *   x86_64-w64-mingw32-g++ -Wall -Wextra -O3 -D_UNICODE -municode -o mkshortcut.exe  mkshortcut.cpp  -lole32 -luuid -static -s
+ *   x86_64-w64-mingw32-g++ -Wall -Wextra -O3 -D_UNICODE -DUNICODE -municode -o mkshortcut.exe  mkshortcut.cpp  -lole32 -luuid -static -s
  *
  * Compile with MSVC:
- *   cl.exe -W3 -O2 -D_UNICODE mkshortcut.cpp
+ *   cl.exe -W3 -O2 -D_UNICODE -DUNICODE mkshortcut.cpp
  */
 
 #ifdef _MSC_VER
+# define _CRT_SECURE_NO_WARNINGS
 # pragma comment(lib, "ole32.lib")
 #endif
 #include <windows.h>

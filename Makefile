@@ -4,7 +4,7 @@ LDFLAGS  := -static -s
 LIBS     := -lole32 -luuid
 
 ifeq ($(ENABLE_UTF8),)
-CXXFLAGS += -D_UNICODE -municode
+CXXFLAGS += -D_UNICODE -DUNICODE -municode
 endif
 
 
