@@ -14,8 +14,7 @@ Notes:
 
 Compile:
 * Visual Studio 2019: open the provided solution file (mkshortcut.sln) and select *Build* -> *Build solution*
-* MSVC command line: `nmake -f Makefile.nmake`
-* GCC/MinGW: `make`
+* the provided Makefile works with Microsoft nmake and GNU make
 
 
 Usage example
