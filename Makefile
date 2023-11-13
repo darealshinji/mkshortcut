@@ -13,7 +13,7 @@ ifdef MAKEDIR: # gmake: false; nmake: unused target
 RM       = del /Q /F
 CXX      = cl.exe
 CXXFLAGS = -nologo -W3 -O2 -D_UNICODE -DUNICODE
-OUT      = -link -out:
+OUT      = -Fe
 
 !else # and now the other
 else
@@ -42,8 +42,8 @@ clean:
 	$(RM) *.exe *.o *.obj
 
 mkshortcut.exe: mkshortcut.cpp
-	$(CXX) $(CXXFLAGS) mkshortcut.cpp $(LDFLAGS) $(LIBS) $(OUT)mkshortcut.exe
+	$(CXX) $(CXXFLAGS) mkshortcut.cpp $(OUT)mkshortcut.exe $(LDFLAGS) $(LIBS)
 
 shortcutinfo.exe: shortcutinfo.cpp
-	$(CXX) $(CXXFLAGS) shortcutinfo.cpp $(LDFLAGS) $(LIBS) $(OUT)shortcutinfo.exe
+	$(CXX) $(CXXFLAGS) shortcutinfo.cpp $(OUT)shortcutinfo.exe $(LDFLAGS) $(LIBS)
 
