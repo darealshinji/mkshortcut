@@ -225,7 +225,7 @@ bool hotkey_from_string(const _TCHAR *p, WORD &wHotKey)
 		} else if (_tcsicmp(p, _T("scroll")) == 0) {
 			wHotKey = (combo << 8) | VK_SCROLL;
 			return true;
-		} else if (key == _T('F') && _tscanf_s(p+1, _T("%d"), &f) == 1) {
+		} else if (key == _T('F') && _stscanf_s(p+1, _T("%d"), &f) == 1) {
 			if (f < 1 || f > 24) {
 				return false;
 			}
@@ -353,7 +353,7 @@ int _tmain(int argc, _TCHAR *argv[])
 				opts.pszIconPath = a+3;
 				break;
 			case _T('n'):
-				if (_tscanf_s(a+3, _T("%d"), &opts.iIcon) != 1) {
+				if (_stscanf_s(a+3, _T("%d"), &opts.iIcon) != 1) {
 					_tprintf_s(invOptMsg, prog, a, prog);
 					return 1;
 				}
