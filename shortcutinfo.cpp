@@ -195,8 +195,8 @@ int _tmain(int argc, _TCHAR *argv[])
 			case SW_SHOWMAXIMIZED:
 				_tprintf_s(_T("SW_SHOWMAXIMIZED\n"));
 				break;
-			case SW_SHOWMINIMIZED:
-				_tprintf_s(_T("SW_SHOWMINIMIZED\n"));
+			case SW_SHOWMINNOACTIVE:
+				_tprintf_s(_T("SW_SHOWMINNOACTIVE\n"));
 				break;
 			default:
 				_tprintf_s(_T("0x%x (not supported)\n"), n);
