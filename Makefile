@@ -23,13 +23,10 @@ else
 #
 RM        = rm -f
 CXX      := x86_64-w64-mingw32-g++
-CXXFLAGS := -Wall -Wextra -O3
+CXXFLAGS := -Wall -Wextra -O3 -D_UNICODE -DUNICODE -municode
 LDFLAGS  := -static -s
 LIBS     := -lole32 -luuid
 OUT       = -o
-ifeq ($(ENABLE_UTF8),)
-CXXFLAGS += -D_UNICODE -DUNICODE -municode
-endif
 
 endif    # gmake: close condition; nmake: not seen
 !endif : # gmake: unused target; nmake close conditional

@@ -8,12 +8,10 @@ Check out https://github.com/libyal/liblnk if you don't want to use the Windows 
 Notes:
 * released under MIT license
 * does not create .url files (those are text files in an INI format)
-* no header file, just copy the code you need
-* Unicode and ANSI using `tchar.h`
 * requires linkage against `ole32.lib` on MSVC and `-lole32 -luuid` on GCC/MinGW
 
 Compile:
-* Visual Studio 2019: open the provided solution file (mkshortcut.sln) and select *Build* -> *Build solution*
+* Visual Studio: open the solution file solution/project.sln and select *Build* -> *Build solution*
 * the provided Makefile works with Microsoft nmake and GNU make
 
 
