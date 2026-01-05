@@ -11,7 +11,7 @@ Notes:
 * requires linkage against `ole32.lib` on MSVC and `-lole32 -luuid` on GCC/MinGW
 
 Compile:
-* Visual Studio: open the solution file solution/project.sln and select *Build* -> *Build solution*
+* Visual Studio: open the solution file mkshortcut.sln and select *Build* -> *Build solution*
 * the provided Makefile works with Microsoft nmake and GNU make
 
 
