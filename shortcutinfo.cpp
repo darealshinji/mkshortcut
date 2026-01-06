@@ -32,6 +32,7 @@ SOFTWARE.
 
 #ifdef _MSC_VER
 #pragma comment(lib, "ole32.lib")
+//#pragma comment(lib, "shell32.lib")
 #endif
 #include <windows.h>
 #include <stdio.h>
@@ -63,9 +64,9 @@ int wmain(int argc, wchar_t *argv[])
 		wprintf_s(L"Target path: %s\n", p);
 	}
 
-	if ((p = shl.get_clsid()) != NULL) {
-		wprintf_s(L"CLSID: %s\n", p);
-	}
+	//if ((p = shl.get_clsid()) != NULL) {
+	//	wprintf_s(L"CLSID: %s\n", p);
+	//}
 
 	if ((p = shl.get_arguments()) != NULL) {
 		wprintf_s(L"Arguments: %s\n", p);

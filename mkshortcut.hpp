@@ -44,14 +44,14 @@ private:
 	const wchar_t *m_desc = NULL;        // Description
 	const wchar_t *m_wdir = NULL;        // Working directory to run command
 	int m_showcmd = SW_SHOWNORMAL;       // Show window setting: SW_SHOWNORMAL, SW_SHOWMAXIMIZED or SW_SHOWMINNOACTIVE
-
-	WORD m_hotkey = 0;  // Sets a keyboard shortcut (hot key);
-	                    // HighByte modifier flags: HOTKEYF_ALT, HOTKEYF_CONTROL, HOTKEYF_EXT, HOTKEYF_SHIFT
-	                    // LowByte key values: 0-9, A-Z, VK_F1-VK_F24, VK_NUMLOCK, VK_SCROLL
-	                    // see part 2.1.3 of https://winprotocoldoc.blob.core.windows.net/productionwindowsarchives/MS-SHLLINK/%5bMS-SHLLINK%5d.pdf
-
 	bool m_admin = false;                // Flag shell link to be run as Administrator
 	HRESULT m_cominitialized = -1;       // Whether COM was initialized or not
+
+	// Sets a keyboard shortcut (hot key);
+	// HighByte modifier flags: HOTKEYF_ALT, HOTKEYF_CONTROL, HOTKEYF_EXT, HOTKEYF_SHIFT
+	// LowByte key values: 0-9, A-Z, VK_F1-VK_F24, VK_NUMLOCK, VK_SCROLL
+	// see part 2.1.3 of Shell Link specs: https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-shllink
+	WORD m_hotkey = 0;
 
 	IShellLink *m_shlink = NULL;
 	IShellLinkDataList *m_shldl = NULL;

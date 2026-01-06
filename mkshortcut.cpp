@@ -59,9 +59,7 @@ int wmain(int argc, wchar_t *argv[])
 		"  /? or /h or /help   Print this text\n"
 		"\n"
 		"  /o:<output>         Path to shell link (shortcut); should end on .lnk [mandatory]\n"
-		"  /t:<target>         Path to shortcut target or CLSID [mandatory]\n"
-		"                      To set a CLSID the target parameter must be\n"
-		"                      set as ::{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}\n"
+		"  /t:<target>         Full path to shortcut target [mandatory]\n"
 		"  /a:<arguments>      Command line arguments to use on launch\n"
 		"  /i:<icon>           Path to file containing icon (.ico, .icl, .exe, .dll)\n"
 		"  /n:<index>          Icon index number\n"
@@ -234,6 +232,11 @@ int wmain(int argc, wchar_t *argv[])
 			free(buf);
 		} else {
 			wprintf_s(L"%s: failed to create shortcut\n", prog);
+
+			if (!tFull) {
+				wprintf_s(L"try to use /tfull to resolve target path\n");
+			}
+
 			ret = 1;
 		}
 	}

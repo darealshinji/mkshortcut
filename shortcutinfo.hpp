@@ -42,51 +42,6 @@ private:
 	wchar_t m_buf[32*1024] = {0};
 	wchar_t *m_pbuf = m_buf;
 
-	int save_guid(wchar_t *buf, unsigned char *p)
-	{
-		return swprintf_s(buf, 41, L"::{%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-									p[3], p[2], p[1], p[0],
-									p[5] ,p[4],
-									p[7], p[6],
-									p[8], p[9],
-									p[10], p[11], p[12], p[13], p[14], p[15]);
-	}
-
-	const wchar_t *read_clsid(FILE *fp)
-	{
-		unsigned char data[64];
-
-		if (fseek(fp, 76, SEEK_SET) != 0) {
-			return NULL;
-		}
-
-		int len = fgetc(fp);
-
-		if (len == EOF) {
-			return NULL;
-		} else if (len == 64) {
-			// 2 CLSIDs, i.e. ::{26EE0668-A00A-44D7-9371-BEB064C98683}\0\::{7B81BE6A-CE2B-4676-A29E-EB907A5126C5}
-			if (fread(&data, 1, 63, fp) == 63 &&
-				(len = save_guid(m_buf, data + 5)) != -1 &&
-				(len = swprintf_s(m_buf + len, 4, L"%s", L"\\0\\")) != -1 &&
-				save_guid(m_buf + len, data + 47) != -1)
-			{
-				return m_buf;
-			}
-		} else {
-			// 1 CLSID
-			if (fread(&data, 1, 21, fp) == 21 &&
-				save_guid(m_buf, data + 5) != -1)
-			{
-				return m_buf;
-			}
-		}
-
-		m_buf[0] = 0;
-
-		return NULL;
-	}
-
 
 public:
 
@@ -167,19 +122,35 @@ public:
 		return NULL;
 	}
 
+/*
 	const wchar_t *get_clsid()
 	{
-		FILE *fp = NULL;
+		int n = -1;
+		PIDLIST_ABSOLUTE pidl = NULL;
 
-		if (_wfopen_s(&fp, m_filename, L"rb") != 0 || !fp) {
+		if (!m_shlink || m_shlink->GetIDList((PIDLIST_ABSOLUTE *)&pidl) != S_OK || !pidl) {
 			return NULL;
 		}
 
-		const wchar_t *p = read_clsid(fp);
-		fclose(fp);
+		USHORT abID_size = pidl->mkid.cb - sizeof(pidl->mkid.cb);
 
-		return p;
+		if (abID_size >= 18) {
+			unsigned char *p = pidl->mkid.abID + 2; // 2 bytes for size?
+
+			n = swprintf_s(m_buf, _countof(m_buf) - 1,
+							L"::{%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
+							p[3], p[2], p[1], p[0],
+							p[5] ,p[4],
+							p[7], p[6],
+							p[8], p[9],
+							p[10], p[11], p[12], p[13], p[14], p[15]);
+		}
+
+		ILFree(pidl);
+
+		return (n == -1) ? NULL : m_buf;
 	}
+*/
 
 	const wchar_t *get_arguments()
 	{
